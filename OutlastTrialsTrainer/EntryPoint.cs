@@ -1,0 +1,1 @@
+﻿await new OutlastTrialsTrainer.OutlastTrialsTrainer().Main(default);
