@@ -26,6 +26,10 @@ public sealed class Freecam : IMemoryTrainer
         new(0x05D759E0, "TOTClient-Win64-Shipping.exe",
             0x208, 0x868, 0x20, 0x29C);
 
+    private readonly byte[] _scriptFunction = [0x83, 0xBB, 0x34, 0x01, 0x00, 0x00, 0x00, 0x0F, 0x84, 0x0D, 0x00, 
+        0x00, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0xE9, 0x08, 0x00, 0x00, 0x00, 0x44, 0x0F, 0x11, 
+        0xAB, 0xE0, 0x01, 0x00, 0x00, 0xE9, 0x8A, 0xA7, 0x87, 0x00];
+    
     private readonly byte[] _deactivateCameraFunction = TrainerHelper.CreateAndGetNops(8);
     private readonly byte[] _originalCameraFunctionOpcodes = [0x44, 0x0F, 0x11, 0xAB, 0xE0, 0x01, 0x00, 0x00];
     
@@ -54,18 +58,21 @@ public sealed class Freecam : IMemoryTrainer
         {
             case "enable_freecam":
             {
-                if (!_memory.WriteBytes(_cameraFunctionAddress, _deactivateCameraFunction))
+                var caveAddress = await _memory.CreateOrResumeDetour(_cameraFunctionAddress, _scriptFunction, 
+                    8, 18);
+
+                if (caveAddress == nuint.Zero)
                 {
                     await Disable();
-                    
+
                     return false;
                 }
-
+                
                 if (!_memory.ReadValue(_cameraCoordinatesAddress, out _currentCameraPosition)
                     && _currentCameraPosition == Vector3.Zero)
                 {
                     await Disable();
-
+                    
                     return false;
                 }
 
@@ -152,8 +159,9 @@ public sealed class Freecam : IMemoryTrainer
     {
         _memory.StopReadingValueConstant(_cameraPitchAddress);
         _memory.StopReadingValueConstant(_cameraYawAddress);
-        _memory.WriteBytes(_cameraFunctionAddress, _originalCameraFunctionOpcodes);
-
+        
+        _memory.PauseOpenedCodeCave(_cameraFunctionAddress);
+        
         await Task.CompletedTask;
         
         return true;
