@@ -1,5 +1,4 @@
 ﻿using System.Collections.Frozen;
-using System.Reflection;
 using OutlastTrialsTrainer.Trainer;
 using OutlastTrialsTrainer.Utilities;
 using ReadWriteMemory;
@@ -25,11 +24,11 @@ public sealed class OutlastTrialsTrainer : IDisposable
         }.ToFrozenDictionary();
 
     private bool _freecamEnabled;
-    
+
     public async Task Main(CancellationToken cancellationToken)
     {
         _memory.OnProcessStateChanged += OnProcessStateChanged;
-        
+
         ConsoleHelper.InitConsole();
 
         var table = new Table();
@@ -37,19 +36,9 @@ public sealed class OutlastTrialsTrainer : IDisposable
         _ = AnsiConsole.Live(
                 ConsoleHelper.GetPreconfiguredTable(table, _implementedTrainer)
             )
-            .StartAsync(async (ctx) =>
-            {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    ctx.Refresh();
-
-                    table.UpdateCell(0, 2, _freecamEnabled ? "[green]on[/]" : "[red]off[/]");
-
-                    ctx.Refresh();
-
-                    await Task.Delay(TimeSpan.FromMilliseconds(125), cancellationToken);
-                }
-            });
+            .StartAsync(
+                (ctx) => HandleLiveDisplay(ctx, table, cancellationToken)
+            );
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -61,7 +50,7 @@ public sealed class OutlastTrialsTrainer : IDisposable
             await Task.Delay(1, cancellationToken);
         }
     }
-
+    
     private async Task HandleTrainerTree(CancellationToken cancellationToken)
     {
         while (_freecamEnabled)
@@ -118,7 +107,22 @@ public sealed class OutlastTrialsTrainer : IDisposable
             await _implementedTrainer[nameof(Freecam)].Enable("right");
         }
     }
-    
+
+    private async Task HandleLiveDisplay(LiveDisplayContext ctx, Table table,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            ctx.Refresh();
+
+            table.UpdateCell(0, 2, _freecamEnabled ? "[green]on[/]" : "[red]off[/]");
+
+            ctx.Refresh();
+
+            await Task.Delay(TimeSpan.FromMilliseconds(125), cancellationToken);
+        }
+    }
+
     private void OnProcessStateChanged(ProgramState state)
     {
         if (state == ProgramState.Closed)
