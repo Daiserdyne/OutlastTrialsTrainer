@@ -11,7 +11,7 @@ public static class ConsoleHelper
                                          "[red][b][u]can crash[/][/][/] your game and/or cause other weird behavior. " +
                                          "Every update for the game can make the trainer useless. So check for " +
                                          "updates on the github site. Perhaps I will add a auto updater in the " +
-                                         "future, when I'm not to lazy to do that ;). Also make sure to " +
+                                         "future, when I'm not to lazy to do that ;). Also, make sure you " +
                                          "[red][b][u]do not[/][/][/] close the mod when freecam is enabled and " +
                                          "the game is still running.";
     
