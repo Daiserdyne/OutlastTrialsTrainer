@@ -1,8 +1,8 @@
 ﻿using System.Numerics;
 
-namespace OutlastTrialsTrainer;
+namespace OutlastTrialsTrainer.Utilities;
 
-public static class Helper
+public static class TrainerHelper
 {
     /// <summary>
     /// Gives you the new coordinates of a game object, based on wherever the camera of the object is looking at.

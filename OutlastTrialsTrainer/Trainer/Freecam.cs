@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using OutlastTrialsTrainer.Utilities;
 using ReadWriteMemory;
 using ReadWriteMemory.Entities;
 using ReadWriteMemory.Interfaces;
@@ -25,7 +26,7 @@ public sealed class Freecam : IMemoryTrainer
         new(0x05D759E0, "TOTClient-Win64-Shipping.exe",
             0x208, 0x868, 0x20, 0x29C);
 
-    private readonly byte[] _deactivateCameraFunction = Helper.CreateAndGetNops(8);
+    private readonly byte[] _deactivateCameraFunction = TrainerHelper.CreateAndGetNops(8);
     private readonly byte[] _originalCameraFunctionOpcodes = [0x44, 0x0F, 0x11, 0xAB, 0xE0, 0x01, 0x00, 0x00];
     
     private Vector3 _currentCameraPosition = Vector3.Zero;
@@ -34,7 +35,7 @@ public sealed class Freecam : IMemoryTrainer
     
     public Freecam() => _memory.OnReinitilizeTargetProcess += OnReinitilizeTargetProcess;
     
-    public int Id => 0;
+    public int Id => 4;
 
     public string TrainerName => nameof(Freecam);
 
@@ -42,7 +43,10 @@ public sealed class Freecam : IMemoryTrainer
 
     public bool DisableWhenDispose => true;
 
-    public Task Enable(params string[]? args)
+    private void RefreshYaw(float newYaw) => _currentYaw = newYaw;
+    private void RefreshPitch(float newPitch) => _currentPitch = newPitch;
+    
+    public async Task<bool> Enable(params string[]? args)
     {
         var command = args!.First();
 
@@ -50,27 +54,44 @@ public sealed class Freecam : IMemoryTrainer
         {
             case "enable_freecam":
             {
-                _memory.WriteBytes(_cameraFunctionAddress, _deactivateCameraFunction);
+                if (!_memory.WriteBytes(_cameraFunctionAddress, _deactivateCameraFunction))
+                {
+                    await Disable();
+                    
+                    return false;
+                }
 
                 if (!_memory.ReadValue(_cameraCoordinatesAddress, out _currentCameraPosition)
                     && _currentCameraPosition == Vector3.Zero)
                 {
-                    return Disable();
+                    await Disable();
+
+                    return false;
                 }
-                
-                _memory.ReadValueConstant<float>(_cameraPitchAddress, 
-                    (newPitch) => { _currentPitch = newPitch; }, 
-                    TimeSpan.FromMilliseconds(5));
-                
-                _memory.ReadValueConstant<float>(_cameraYawAddress, 
-                    (newYaw) => { _currentYaw = newYaw; }, 
-                    TimeSpan.FromMilliseconds(5));
+
+                if (!_memory.ReadValueConstant<float>(_cameraPitchAddress, 
+                        RefreshPitch, 
+                        TimeSpan.FromMilliseconds(5)))
+                {
+                    await Disable();
+
+                    return false;
+                }
+
+                if (!_memory.ReadValueConstant<float>(_cameraYawAddress, 
+                        RefreshYaw, 
+                        TimeSpan.FromMilliseconds(5)))
+                {
+                    await Disable();
+                    
+                    return false;
+                }
                 
                 break;
             }
             case "forward":
             {
-                var newCoordinates = Helper.TeleportForward(_currentCameraPosition, 
+                var newCoordinates = TrainerHelper.TeleportForward(_currentCameraPosition, 
                     _currentYaw - 90f, _currentPitch , 40f);
                 
                 WriteNewCameraCoords(newCoordinates);
@@ -79,7 +100,7 @@ public sealed class Freecam : IMemoryTrainer
             }
             case "backward":
             {
-                var newCoordinates = Helper.TeleportBackward(_currentCameraPosition, 
+                var newCoordinates = TrainerHelper.TeleportBackward(_currentCameraPosition, 
                     _currentYaw - 90f, _currentPitch, 40f);
                 
                 WriteNewCameraCoords(newCoordinates);
@@ -104,7 +125,7 @@ public sealed class Freecam : IMemoryTrainer
             }
             case "right":
             {
-                var newCoordinates = Helper.TeleportForwardWithoutZ(_currentCameraPosition, 
+                var newCoordinates = TrainerHelper.TeleportForwardWithoutZ(_currentCameraPosition, 
                     _currentYaw, 40f);
                 
                 WriteNewCameraCoords(newCoordinates);
@@ -113,7 +134,7 @@ public sealed class Freecam : IMemoryTrainer
             }
             case "left":
             {
-                var newCoordinates = Helper.TeleportForwardWithoutZ(_currentCameraPosition, 
+                var newCoordinates = TrainerHelper.TeleportForwardWithoutZ(_currentCameraPosition, 
                     _currentYaw - 180f, 40f);
                 
                 WriteNewCameraCoords(newCoordinates);
@@ -122,9 +143,22 @@ public sealed class Freecam : IMemoryTrainer
             }
         }
 
-        return Task.CompletedTask;
+        await Task.CompletedTask;
+        
+        return true;
     }
 
+    public async Task<bool> Disable(params string[]? args)
+    {
+        _memory.StopReadingValueConstant(_cameraPitchAddress);
+        _memory.StopReadingValueConstant(_cameraYawAddress);
+        _memory.WriteBytes(_cameraFunctionAddress, _originalCameraFunctionOpcodes);
+
+        await Task.CompletedTask;
+        
+        return true;
+    }
+    
     private void WriteNewCameraCoords(Vector3 newCoordinates)
     {
         _currentCameraPosition = newCoordinates;
@@ -132,19 +166,13 @@ public sealed class Freecam : IMemoryTrainer
         _memory.WriteValue(_cameraCoordinatesAddress, newCoordinates);
     }
 
-    public Task Disable(params string[]? args)
-    {
-        _memory.StopReadingValueConstant(_cameraPitchAddress);
-        _memory.StopReadingValueConstant(_cameraYawAddress);
-        _memory.WriteBytes(_cameraFunctionAddress, _originalCameraFunctionOpcodes);
-        
-        return Task.CompletedTask;
-    }
-
     private void OnReinitilizeTargetProcess()
     {
         _currentCameraPosition = Vector3.Zero;
         _currentPitch = 0f;
         _currentYaw = 0f;
+        
+        _memory.StopReadingValueConstant(_cameraPitchAddress);
+        _memory.StopReadingValueConstant(_cameraYawAddress);
     }
 }
