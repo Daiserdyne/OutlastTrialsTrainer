@@ -30,9 +30,6 @@ public sealed class Freecam : IMemoryTrainer
         0x00, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0xE9, 0x08, 0x00, 0x00, 0x00, 0x44, 0x0F, 0x11, 
         0xAB, 0xE0, 0x01, 0x00, 0x00, 0xE9, 0x8A, 0xA7, 0x87, 0x00];
     
-    private readonly byte[] _deactivateCameraFunction = TrainerHelper.CreateAndGetNops(8);
-    private readonly byte[] _originalCameraFunctionOpcodes = [0x44, 0x0F, 0x11, 0xAB, 0xE0, 0x01, 0x00, 0x00];
-    
     private Vector3 _currentCameraPosition = Vector3.Zero;
     private float _currentPitch;
     private float _currentYaw;
@@ -48,6 +45,7 @@ public sealed class Freecam : IMemoryTrainer
     public bool DisableWhenDispose => true;
 
     private void RefreshYaw(float newYaw) => _currentYaw = newYaw;
+    
     private void RefreshPitch(float newPitch) => _currentPitch = newPitch;
     
     public async Task<bool> Enable(params string[]? args)
@@ -78,7 +76,7 @@ public sealed class Freecam : IMemoryTrainer
 
                 if (!_memory.ReadValueConstant<float>(_cameraPitchAddress, 
                         RefreshPitch, 
-                        TimeSpan.FromMilliseconds(5)))
+                        TimeSpan.FromMilliseconds(1)))
                 {
                     await Disable();
 
@@ -87,7 +85,7 @@ public sealed class Freecam : IMemoryTrainer
 
                 if (!_memory.ReadValueConstant<float>(_cameraYawAddress, 
                         RefreshYaw, 
-                        TimeSpan.FromMilliseconds(5)))
+                        TimeSpan.FromMilliseconds(1)))
                 {
                     await Disable();
                     
@@ -99,7 +97,7 @@ public sealed class Freecam : IMemoryTrainer
             case "forward":
             {
                 var newCoordinates = TrainerHelper.TeleportForward(_currentCameraPosition, 
-                    _currentYaw - 90f, _currentPitch , 40f);
+                    _currentYaw - 90f, _currentPitch , 30f);
                 
                 WriteNewCameraCoords(newCoordinates);
 
@@ -108,7 +106,7 @@ public sealed class Freecam : IMemoryTrainer
             case "backward":
             {
                 var newCoordinates = TrainerHelper.TeleportBackward(_currentCameraPosition, 
-                    _currentYaw - 90f, _currentPitch, 40f);
+                    _currentYaw - 90f, _currentPitch, 30f);
                 
                 WriteNewCameraCoords(newCoordinates);
                 
@@ -133,7 +131,7 @@ public sealed class Freecam : IMemoryTrainer
             case "right":
             {
                 var newCoordinates = TrainerHelper.TeleportForwardWithoutZ(_currentCameraPosition, 
-                    _currentYaw, 40f);
+                    _currentYaw, 30f);
                 
                 WriteNewCameraCoords(newCoordinates);
 
@@ -142,7 +140,7 @@ public sealed class Freecam : IMemoryTrainer
             case "left":
             {
                 var newCoordinates = TrainerHelper.TeleportForwardWithoutZ(_currentCameraPosition, 
-                    _currentYaw - 180f, 40f);
+                    _currentYaw - 180f, 30f);
                 
                 WriteNewCameraCoords(newCoordinates);
                 
@@ -176,11 +174,11 @@ public sealed class Freecam : IMemoryTrainer
 
     private void OnReinitilizeTargetProcess()
     {
+        _memory.StopReadingValueConstant(_cameraPitchAddress);
+        _memory.StopReadingValueConstant(_cameraYawAddress);
+        
         _currentCameraPosition = Vector3.Zero;
         _currentPitch = 0f;
         _currentYaw = 0f;
-        
-        _memory.StopReadingValueConstant(_cameraPitchAddress);
-        _memory.StopReadingValueConstant(_cameraYawAddress);
     }
 }

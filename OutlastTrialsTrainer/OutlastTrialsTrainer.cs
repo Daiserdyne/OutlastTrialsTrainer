@@ -113,6 +113,10 @@ public sealed class OutlastTrialsTrainer : IDisposable
     {
         while (!cancellationToken.IsCancellationRequested)
         {
+            table.Title(_memory.IsProcessAlive
+                ? "[[ [darkolivegreen2]Game is running.[/] ]]"
+                : "[[ [deeppink3]Game is not running.[/] ]]");
+
             ctx.Refresh();
 
             table.UpdateCell(0, 2, _freecamEnabled ? "[green]on[/]" : "[red]off[/]");

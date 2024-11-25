@@ -43,10 +43,18 @@ public static class ConsoleHelper
                     "https://github.com/Daiserdyne/OutlastTrialsTrainer")
             )
             .Centered();
-
+        
         AnsiConsole.Write(titleText2);
+        
+        var titleText3 = new Text("YouTube",
+                new Style(Color.Red3, Color.Black, Decoration.Bold,
+                    "https://www.youtube.com/@Daiserdyne")
+            )
+            .Centered();
 
-        AnsiConsole.Write("\n\n");
+        AnsiConsole.Write(titleText3);
+
+        AnsiConsole.Write("\n\n\n");
 
         AnsiConsole.MarkupLine(ImportantNote);
 
@@ -55,9 +63,13 @@ public static class ConsoleHelper
 
     public static Table GetPreconfiguredTable(Table table, FrozenDictionary<string, IMemoryTrainer> trainerList)
     {
+        table.Title("\n");
+
+        table.BorderColor(Color.LightCyan1);
+        
         table.AddColumns("[blue]Trainer[/]", "[orange1]Hotkey[/]", "[darkorange3]Status[/]", "[grey]Description[/]")
             .Expand();
-
+        
         foreach (var trainer in trainerList.Values)
         {
             if (trainer.DisableWhenDispose)
